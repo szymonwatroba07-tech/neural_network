@@ -11,6 +11,9 @@ def softmax(output):
     exp_sum = np.sum(exp_output)
     return exp_output / exp_sum
 
+def Categorical_Cross_Entropy(y_expected, y_output):
+    output_log = np.log(y_output)
+    return (-np.dot(y_expected, output_log.T))
 
 class Layer_Dense:
     def __init__(self, input_size, output_size):
@@ -38,12 +41,16 @@ print(X, "\n")
 
 layer_1 = Layer_Dense(2,4)  
 layer_1.forward(X, activation = 'sigmoid')
+#print(layer_1.output, "\n")
 
 layer_2 = Layer_Dense(4,4)
 layer_2.forward(layer_1.output, activation = 'sigmoid')
+#print(layer_2.output, "\n")
 
 y_layer = Layer_Dense(4,2)
 y_output = y_layer.forward(layer_2.output)
 
+loss = Categorical_Cross_Entropy(y_expected, y_output)
 
 print(softmax(y_output))
+print("Loss: ", loss)
