@@ -1,7 +1,7 @@
 import numpy as np
 
 def leaky_ReLU(output):
-    return np.where(output>0, output, 1e-9 *output)
+    return np.where(output>0, output, 0.01 *output)
 
 def softmax(output):
     exp_output = np.exp(output)
@@ -31,7 +31,7 @@ class Layer_Dense:
     def backward(self, y_expected, y_output, learning_rate):
         #dLoss_dWeights = dLoss_dOuput * dReLU_dWeightedSum * dWeightedSum_dWeights
         dLoss_dOutput = 2 * (y_output - y_expected)                                 
-        dRelu_WeightedSum = np.where(self.output>0, 1, 1e-9)
+        dRelu_WeightedSum = np.where(self.output>0, 1, 0.01)
         dWeightedSum_dWeights = self.inputs
         dLoss_dWeights = np.outer((dLoss_dOutput * dRelu_WeightedSum), dWeightedSum_dWeights.T)
         self.dLoss_dWeights = dLoss_dWeights
@@ -48,9 +48,9 @@ class Layer_Dense:
 
 X = np.random.rand(2)
 y_expected = [0,1]
-learning_rate = 0.1
+learning_rate = 0.01
 print(X, "\n")
-
+'''
 layer_1 = Layer_Dense(2,4)  
 layer_1.forward(X)
 #print(layer_1.output, "\n")
@@ -64,10 +64,14 @@ y_output = y_layer.forward(layer_2.output)
 
 #loss_CCE = Categorical_Cross_Entropy(y_expected, y_output)
 loss_MSE = Mean_Square_Error(y_expected, y_output) 
-
-new_weight_matrix = y_layer.backward(y_expected, y_output, 0.01)
-
-print(softmax(y_output))
-print("Loss: ", loss_MSE)
-print("\nLast layer weight matrix: ", y_layer.weight)
-print("\nNew weight matrix: ", new_weight_matrix)
+'''
+layer_1 = Layer_Dense(input_size=2, output_size=4)
+layer_2= Layer_Dense(input_size=4, output_size=4)
+layer_3 = Layer_Dense(input_size=4, output_size=2)
+for epoch in range(180):
+    hidden1_output = layer_1.forward(X)
+    hidden2_output = layer_2.forward(hidden1_output)
+    output = layer_3.forward(hidden2_output)
+    if epoch %10 == 0:
+        print(f"Epoch {epoch}, Loss: {loss:.4f}")
+print("Final weights: ", layer.weight)
