@@ -4,8 +4,10 @@ def leaky_ReLU(output):
     return np.where(output>0, output, 0.01 *output)
 
 def softmax(output):
-    exp_output = np.exp(output)
-    exp_sum = np.sum(exp_output)
+    #zmieniony softmax, gdybys mial duze wartosci w porpzenim, dostalbys inf, ten softmax bedzie obslugiwal dowolny batch
+    shifted = output - np.max(output, axis=1, keepdims=True)
+    exp_output = np.exp(shifted)
+    exp_sum = np.sum(exp_output, axis=1, keepdims=True)
     return exp_output / exp_sum
 
 '''
@@ -26,17 +28,30 @@ class Layer_Dense:
 #layer i-th neuron
     def forward(self, inputs):
         self.inputs = inputs   
-        self.output = leaky_ReLU(np.dot(inputs, self.weight.T) + self.biases)
+        self.z = np.dot(inputs, self.weight.T) + self.biases #zeby przechowywwalo sume wazona przed aktywacja, lepiej zrobic osobna zmienna do tego 
+        self.output = leaky_ReLU(self.z)
         return self.output
-    def backward(self, y_expected, y_output, learning_rate):
+    
+    def backward(self, grad_from_next_layer, learning_rate):
         #dLoss_dWeights = dLoss_dOuput * dReLU_dWeightedSum * dWeightedSum_dWeights
-        dLoss_dOutput = 2 * (y_output - y_expected)                                 
-        dRelu_WeightedSum = np.where(self.output>0, 1, 0.01)
-        dWeightedSum_dWeights = self.inputs
-        dLoss_dWeights = np.outer((dLoss_dOutput * dRelu_WeightedSum), dWeightedSum_dWeights.T)
-        self.dLoss_dWeights = dLoss_dWeights
-        self.weight -= (learning_rate * self.dLoss_dWeights)
-        return self.weight
+        batch_size = self.inputs.shape[0]
+        #tu wazna zmiana: wprowadzamy batch size. gdy siec sie uczy, to aktualizujemy wagi i biasy na podstawie sredniej z batcha, a nie pojedynczego przykladu, 
+        #do sieci nie wrzucamy tylko jednej paczki danych ale zestaw paczek, czyli batch, potem oliczna ajest srednia z tego batcha
+        #bo obliczneia zajelyby duzo czasu gdyby aktualizowac wagi pojedynczo. tym sam,ym usredniamy potem gradienty
+        #od wszystkich probek w batchu, aktualizacja nie zalezy od wielkosci batcha, dlatego bedziemy rpzez batch size dzielic
+        dReLU_WeightedSum = np.where(self.z > 0, 1, 0.01)
+        grad_z = grad_from_next_layer * dReLU_WeightedSum
+
+        self.dLoss_dWeights = np.dot(grad_z.T, self.inputs) / batch_size
+        self.dLoss_dBiases = np.sum(grad_z, axis=0) / batch_size
+
+        grad_from_prev_layer = np.dot(grad_z, self.weight)
+        self.weight -= learning_rate * self.dLoss_dWeights
+        self.biases -= learning_rate * self.dLoss_dBiases #boasy tez sie aktualizuje, nie tylko wagi 
+
+        return grad_from_prev_layer #wczesniej, jesli zwracales self.weight, to zwracalo wagi, nie gradient
+        #propagacja wsteczna w uczeniu wymaga przekazania gradientu do warstwy poprzeniej, inaczje nie mozna trenowac 
+        #wiecej niz jednej warstwy  
 
         
     
@@ -46,10 +61,10 @@ class Layer_Dense:
 
 
 
-X = np.random.rand(2)
-y_expected = [0,1]
+X = np.array([[0, 0], [0, 1], [1, 0], [1, 1]])  # Batch 4 probki
+y_expected = np.array([[0], [1], [1], [0]]) #Batch 4 probki 1 output
 learning_rate = 0.01
-print(X, "\n")
+#print(X, "\n")
 '''
 layer_1 = Layer_Dense(2,4)  
 layer_1.forward(X)
@@ -67,11 +82,20 @@ loss_MSE = Mean_Square_Error(y_expected, y_output)
 '''
 layer_1 = Layer_Dense(input_size=2, output_size=4)
 layer_2= Layer_Dense(input_size=4, output_size=4)
-layer_3 = Layer_Dense(input_size=4, output_size=2)
-for epoch in range(180):
+layer_3 = Layer_Dense(input_size=4, output_size=1) #wyjscie z 2 na 1 neuron, na potrzeby klasyfikajji binarnej 
+
+for epoch in range(1800):
     hidden1_output = layer_1.forward(X)
     hidden2_output = layer_2.forward(hidden1_output)
     output = layer_3.forward(hidden2_output)
-    if epoch %10 == 0:
+    
+    #ponizej definicja loss, bo nie byl liczony
+    loss = Mean_Square_Error(y_expected, output)
+    #backward
+    grad3 = layer_3.backward(y_expected, output, learning_rate)
+    grad2 = layer_2.backward(grad3, learning_rate)
+    grad1 = layer_1.backward(grad2, learning_rate)
+    if epoch %100 == 0:
         print(f"Epoch {epoch}, Loss: {loss:.4f}")
-print("Final weights: ", layer.weight)
+
+#print("Final weights: ", layer.weight)
