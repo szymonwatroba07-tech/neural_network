@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 
 def leaky_ReLU(output):
     return np.where(output>0, output, 0.01 *output)
@@ -82,8 +83,8 @@ loss_MSE = Mean_Square_Error(y_expected, y_output)
 '''
 layer_1 = Layer_Dense(input_size=2, output_size=4)
 layer_2= Layer_Dense(input_size=4, output_size=4)
-layer_3 = Layer_Dense(input_size=4, output_size=1) #wyjscie z 2 na 1 neuron, na potrzeby klasyfikajji binarnej 
-
+layer_3 = Layer_Dense(input_size=4, output_size=1) #wyjscie z 2 na 1 neuron, na potrzeby klasyfikajji binarnej
+print("First weights of third layer: ", layer_3.weight)
 for epoch in range(1800):
     hidden1_output = layer_1.forward(X)
     hidden2_output = layer_2.forward(hidden1_output)
@@ -92,10 +93,14 @@ for epoch in range(1800):
     #ponizej definicja loss, bo nie byl liczony
     loss = Mean_Square_Error(y_expected, output)
     #backward
-    grad3 = layer_3.backward(y_expected, output, learning_rate)
+    grad3 = 2 * (output - y_expected)
+    grad3 = layer_3.backward(grad3, learning_rate)
     grad2 = layer_2.backward(grad3, learning_rate)
     grad1 = layer_1.backward(grad2, learning_rate)
     if epoch %100 == 0:
         print(f"Epoch {epoch}, Loss: {loss:.4f}")
+print("Final weights of third layer: ", layer_3.weight)
 
-#print("Final weights: ", layer.weight)
+plt.plot([1, 2, 3, 4])
+plt.ylabel('some numbers')
+plt.show()
