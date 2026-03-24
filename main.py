@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
 
 def leaky_ReLU(output):
     return np.where(output>0, output, 0.01 *output)
@@ -100,7 +99,3 @@ for epoch in range(1800):
     if epoch %100 == 0:
         print(f"Epoch {epoch}, Loss: {loss:.4f}")
 print("Final weights of third layer: ", layer_3.weight)
-
-plt.plot([1, 2, 3, 4])
-plt.ylabel('some numbers')
-plt.show()
