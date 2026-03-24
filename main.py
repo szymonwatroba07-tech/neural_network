@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 
 def leaky_ReLU(output):
     return np.where(output>0, output, 0.01 *output)
@@ -91,6 +92,9 @@ for epoch in range(1800):
     
     #ponizej definicja loss, bo nie byl liczony
     loss = Mean_Square_Error(y_expected, output)
+    #tabela strat do wykresu
+    loss_arr = [1]
+    loss_arr.append(loss)
     #backward
     grad3 = 2 * (output - y_expected)
     grad3 = layer_3.backward(grad3, learning_rate)
@@ -99,3 +103,8 @@ for epoch in range(1800):
     if epoch %100 == 0:
         print(f"Epoch {epoch}, Loss: {loss:.4f}")
 print("Final weights of third layer: ", layer_3.weight)
+
+plt.plot([0,1800],loss_arr)
+plt.xlabel('EPOCH')
+plt.ylabel('LOSS')
+plt.show()
