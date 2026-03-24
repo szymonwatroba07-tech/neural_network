@@ -52,27 +52,7 @@ class Layer_Dense:
         return grad_from_prev_layer #wczesniej, jesli zwracales self.weight, to zwracalo wagi, nie gradient
         #propagacja wsteczna w uczeniu wymaga przekazania gradientu do warstwy poprzeniej, inaczje nie mozna trenowac 
         #wiecej niz jednej warstwy  
-        batch_size = self.inputs.shape[0]
-        #tu wazna zmiana: wprowadzamy batch size. gdy siec sie uczy, to aktualizujemy wagi i biasy na podstawie sredniej z batcha, a nie pojedynczego przykladu, 
-        #do sieci nie wrzucamy tylko jednej paczki danych ale zestaw paczek, czyli batch, potem oliczna ajest srednia z tego batcha
-        #bo obliczneia zajelyby duzo czasu gdyby aktualizowac wagi pojedynczo. tym sam,ym usredniamy potem gradienty
-        #od wszystkich probek w batchu, aktualizacja nie zalezy od wielkosci batcha, dlatego bedziemy rpzez batch size dzielic
-        dReLU_WeightedSum = np.where(self.z > 0, 1, 0.01)
-        grad_z = grad_from_next_layer * dReLU_WeightedSum
 
-        self.dLoss_dWeights = np.dot(grad_z.T, self.inputs) / batch_size
-        self.dLoss_dBiases = np.sum(grad_z, axis=0) / batch_size
-
-        grad_from_prev_layer = np.dot(grad_z, self.weight)
-        self.weight -= learning_rate * self.dLoss_dWeights
-        self.biases -= learning_rate * self.dLoss_dBiases #boasy tez sie aktualizuje, nie tylko wagi 
-
-        return grad_from_prev_layer #wczesniej, jesli zwracales self.weight, to zwracalo wagi, nie gradient
-        #propagacja wsteczna w uczeniu wymaga przekazania gradientu do warstwy poprzeniej, inaczje nie mozna trenowac 
-        #wiecej niz jednej warstwy  
-
-        
-    
     def sigmoid(self):
         self.sigmoid_output = 1 / (1 + np.exp(-self.output))
         return self.sigmoid_output
@@ -80,12 +60,8 @@ class Layer_Dense:
 
 
 X = np.array([[0, 0], [0, 1], [1, 0], [1, 1]])  # Batch 4 probki
-y_expected = np.array([[0], [1], [1], [0]]) #Batch 4 probki 1 output
-X = np.array([[0, 0], [0, 1], [1, 0], [1, 1]])  # Batch 4 probki
-y_expected = np.array([[0], [1], [1], [0]]) #Batch 4 probki 1 output
+y_expected = np.array([[0], [1], [1], [0]]) #Batch 4 probki 1 outputl
 learning_rate = 0.01
-#print(X, "\n")
-#print(X, "\n")
 '''
 layer_1 = Layer_Dense(2,4)  
 layer_1.forward(X)
