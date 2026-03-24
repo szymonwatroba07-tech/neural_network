@@ -81,7 +81,8 @@ layer_1 = Layer_Dense(input_size=2, output_size=4)
 layer_2= Layer_Dense(input_size=4, output_size=4)
 layer_3 = Layer_Dense(input_size=4, output_size=1) #wyjscie z 2 na 1 neuron, na potrzeby klasyfikajji binarnej
 print("First weights of third layer: ", layer_3.weight)
-for epoch in range(1800):
+loss_arr = []
+for epoch in range(250):
     hidden1_output = layer_1.forward(X)
     hidden2_output = layer_2.forward(hidden1_output)
     output = layer_3.forward(hidden2_output)
@@ -89,7 +90,6 @@ for epoch in range(1800):
     #ponizej definicja loss, bo nie byl liczony
     loss = Mean_Square_Error(y_expected, output)
     #tabela strat do wykresu
-    loss_arr = [1]
     loss_arr.append(loss)
     #backward
     grad3 = 2 * (output - y_expected)
@@ -100,7 +100,12 @@ for epoch in range(1800):
         print(f"Epoch {epoch}, Loss: {loss:.4f}")
 print("Final weights of third layer: ", layer_3.weight)
 
-plt.plot([0,1800],loss_arr)
-plt.xlabel('EPOCH')
-plt.ylabel('LOSS')
+plt.figure(figsize=(10, 6))
+plt.plot(loss_arr, label='Training Loss')
+
+plt.title('Funkcja straty (MSE) w czasie trenowania')
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.grid(True, linestyle='--', alpha=0.6)
+plt.legend()
 plt.show()
