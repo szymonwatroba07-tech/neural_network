@@ -43,13 +43,14 @@ class Layer_Dense:
         #wiecej niz jednej warstwy  
 
 class Adam_Optimizer:
-    def __init__(self, layers_matrix, learning_rate = 0.1, beta_1 = 0.9, beta_2 = 0.999, epsilon = 1e-8):
+    def __init__(self, layers_matrix, learning_rate = 0.1, beta_1 = 0.9, beta_2 = 0.999, epsilon = 1e-8, decay_rate = 0.01):
         self.learning_rate = learning_rate
         self.beta_1 = beta_1
         self.beta_2 = beta_2
         self.epsilon = epsilon
         self.t = 0
-
+        self.decay_rate = decay_rate
+        
         self.m_weights = ([np.zeros_like(layer.weight) for layer in layers_matrix])  #inicjalizacja matryc m i v (wypelnienie zerami)
         self.v_weights = ([np.zeros_like(layer.weight) for layer in layers_matrix])
         self.m_biases = ([np.zeros_like(layer.biases) for layer in layers_matrix])
@@ -73,8 +74,8 @@ class Adam_Optimizer:
             m_b_hat = self.m_biases[i] / (1 - self.beta_1 ** self.t)
             v_b_hat = self.v_biases[i] / (1 - self.beta_2 ** self.t)
         
-            layer.weight -= (self.learning_rate * m_w_hat) / (np.sqrt(v_w_hat) + self.epsilon)
-            layer.biases -= (self.learning_rate * m_b_hat) / (np.sqrt(v_b_hat) + self.epsilon)
+            layer.weight -= (self.learning_rate * m_w_hat) / (np.sqrt(v_w_hat) + self.epsilon) - layer.weight * self.decay_rate * self.learning_rate
+            layer.biases -= (self.learning_rate * m_b_hat) / (np.sqrt(v_b_hat) + self.epsilon) - layer.biases * self.decay_rate * self.learning_rate
             
 
         
