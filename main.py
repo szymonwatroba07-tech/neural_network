@@ -2,20 +2,34 @@ import numpy as np
 import matplotlib.pyplot as plt
 import functions as func
 
+# Dane wejsciowe
+train_images_path = r"C:\Users\szymo\neural_network\train-images.idx3-ubyte"
+train_labels_path = r"C:\Users\szymo\neural_network\train-labels.idx1-ubyte"
+test_images_path = r"C:\Users\szymo\neural_network\t10k-images.idx3-ubyte"
+test_labels_path = r"C:\Users\szymo\neural_network\t10k-labels.idx1-ubyte"
 
+train_images = func.load_images(train_images_path)
+train_labels = func.load_labels(train_labels_path)
+
+# Zagęszczenie warstw
 class Layer_Dense:
-    def __init__(self, input_size, output_size, activation = "leaky_ReLU"):
-        self.weight = 0.1*np.random.randn(output_size, input_size) #randn bo wagi moga byc ujemne
-        #biasy jako macierz dla poprawnego broadcastingu, zeby mozna bylo dodawac do kazdego wiersza, a nie tylko do pierwszego
+    def __init__(self, input_size, output_size, activation="softmax"):
+        # He Initialization dla Leaky ReLU, Xavier dla Sigmoid
+        if activation == "leaky_ReLU":
+            self.weight = np.random.randn(output_size, input_size) * np.sqrt(2. / input_size)
+        else:
+            self.weight = np.random.randn(output_size, input_size) * np.sqrt(1. / input_size)
+            
         self.biases = np.zeros((1, output_size))
         self.activation = activation
-#weight[i,j] is a weight betweenn j-th neuron and previous'
-#layer i-th neuron
+
     def forward(self, inputs):
         self.inputs = inputs   
         self.z = np.dot(inputs, self.weight.T) + self.biases #zeby przechowywwalo sume wazona przed aktywacja, lepiej zrobic osobna zmienna do tego 
         if self.activation == "leaky_ReLU":
             self.output = func.leaky_ReLU(self.z)
+        elif self.activation == "softmax":
+            self.output = func.softmax(self.z)
         elif self.activation == "sigmoid":
             self.output = func.sigmoid(self.z)
         return self.output
@@ -28,10 +42,11 @@ class Layer_Dense:
         #bo obliczneia zajelyby duzo czasu gdyby aktualizowac wagi pojedynczo. tym sam,ym usredniamy potem gradienty
         #od wszystkich probek w batchu, aktualizacja nie zalezy od wielkosci batcha, dlatego bedziemy rpzez batch size dzielic
         if self.activation == "leaky_ReLU":
-            d_activation = func.leaky_ReLU_derivative(self.z)
+            grad_z = grad_from_next_layer * func.leaky_ReLU_derivative(self.z)
+        elif self.activation == "softmax":
+            grad_z = grad_from_next_layer
         elif self.activation == "sigmoid":
-            d_activation = self.output * (1-self.output)
-        grad_z = grad_from_next_layer * d_activation
+            grad_z = grad_from_next_layer * (self.output * (1 - self.output))
 
         self.dLoss_dWeights = np.dot(grad_z.T, self.inputs)
         self.dLoss_dBiases = np.sum(grad_z, axis=0, keepdims=True)
@@ -42,8 +57,9 @@ class Layer_Dense:
         #propagacja wsteczna w uczeniu wymaga przekazania gradientu do warstwy poprzeniej, inaczje nie mozna trenowac 
         #wiecej niz jednej warstwy  
 
+# Adam W
 class Adam_Optimizer:
-    def __init__(self, layers_matrix, learning_rate = 0.1, beta_1 = 0.9, beta_2 = 0.999, epsilon = 1e-8, decay_rate = 0.01):
+    def __init__(self, layers_matrix, learning_rate = 0.001, beta_1 = 0.9, beta_2 = 0.999, epsilon = 1e-8, decay_rate = 0.01):
         self.learning_rate = learning_rate
         self.beta_1 = beta_1
         self.beta_2 = beta_2
@@ -74,49 +90,77 @@ class Adam_Optimizer:
             m_b_hat = self.m_biases[i] / (1 - self.beta_1 ** self.t)
             v_b_hat = self.v_biases[i] / (1 - self.beta_2 ** self.t)
         
-            layer.weight -= (self.learning_rate * m_w_hat) / (np.sqrt(v_w_hat) + self.epsilon) - layer.weight * self.decay_rate * self.learning_rate
-            layer.biases -= (self.learning_rate * m_b_hat) / (np.sqrt(v_b_hat) + self.epsilon) - layer.biases * self.decay_rate * self.learning_rate
+            layer.weight *= (1 - self.decay_rate * self.learning_rate)
+            layer.weight -= (self.learning_rate * m_w_hat) / (np.sqrt(v_w_hat) + self.epsilon)
             
+            layer.biases -= (self.learning_rate * m_b_hat) / (np.sqrt(v_b_hat) + self.epsilon)
 
-        
-    
-X = np.array([[0, 0], [0, 1], [1, 0], [1, 1]])  # Batch 4 probki
-y_expected = np.array([[0], [1], [1], [0]]) #Batch 4 probki 1 outputl
-learning_rate = 0.1
+# Dane wejściowe           
+X = train_images / 255.0
+y_expected = func.one_hot(train_labels)
+learning_rate = 0.01
+batch_size = 128
 
+# Architektura: wejście 784 -> ukryta 128 -> ukryta 64 -> wyjście 10 (Softmax)
+layer_1 = Layer_Dense(input_size=784, output_size=128, activation="leaky_ReLU")
+layer_2= Layer_Dense(input_size=128, output_size=64, activation="leaky_ReLU")
+layer_3 = Layer_Dense(input_size=64, output_size=10, activation="softmax")
 
-# Architektura: wejście 2 -> ukryta 4 -> ukryta 4 -> wyjście 1 (Sigmoid)
-layer_1 = Layer_Dense(input_size=2, output_size=4, activation="leaky_ReLU")
-layer_2= Layer_Dense(input_size=4, output_size=4, activation="leaky_ReLU")
-layer_3 = Layer_Dense(input_size=4, output_size=1, activation="sigmoid") #sigmoid na ywjscie, nie moze byc relu bo wynik bedzie bezsensowny
-print("First weights of third layer: ", layer_3.weight)
-
-
+#Inicjalizacja otymalizatora
 Adam = Adam_Optimizer([layer_1, layer_2, layer_3])
 loss_arr = []
-for epoch in range(250):
-    hidden1_output = layer_1.forward(X)
-    hidden2_output = layer_2.forward(hidden1_output)
-    output = layer_3.forward(hidden2_output)
+batch_size = 128
+epochs = 40 
+
+print(f"Y_expected shape: {y_expected.shape}, Sum of first row: {np.sum(y_expected[0])}")
+
+for epoch in range(epochs):
     
-    #ponizej definicja loss, bo nie byl liczony
-    loss = func.Mean_Square_Error(y_expected, output)
-    #tabela strat do wykresu
-    loss_arr.append(loss)
-    #backward
-    grad = 2 * (output - y_expected) / output.shape[0]
+    permutation = np.random.permutation(X.shape[0])
+    X_shuffled = X[permutation]
+    y_shuffled = y_expected[permutation]
     
-    grad = layer_3.backward(grad)
-    grad = layer_2.backward(grad)
-    grad = layer_1.backward(grad)
+    epoch_loss = 0
+    steps = 0
+    
+    for i in range(0, X.shape[0], batch_size):
+        X_batch = X_shuffled[i:i + batch_size]
+        y_batch = y_shuffled[i:i + batch_size]
+        
+        # 1. FORWARD
+        out1 = layer_1.forward(X_batch)
+        out2 = layer_2.forward(out1)
+        output = layer_3.forward(out2)
+        
+        # 2. LOSS (Categorical Cross Entropy)
+        batch_loss = func.Categorical_Cross_Entropy(y_batch, output)
+        epoch_loss += batch_loss
+        steps += 1
+        
+        # 3. BACKWARD
+        # Pochodna Softmax + CCE: (wyjście - prawda) / rozmiar_batcha
+        grad = (output - y_batch) / X_batch.shape[0]
+        
+        grad = layer_3.backward(grad)
+        grad = layer_2.backward(grad)
+        grad = layer_1.backward(grad)
+        
+        # 4. OPTIMIZATION
+        Adam.step([layer_1, layer_2, layer_3])
+    
+    avg_loss = epoch_loss / steps
+    loss_arr.append(avg_loss)
+    
+    # Dodatkowy monitoring celności
+    predictions = np.argmax(output, axis=1)
+    targets = np.argmax(y_batch, axis=1)
+    accuracy = np.mean(predictions == targets)
+    
+    print(f"Epoch {epoch:02d} | Loss: {avg_loss:.4f} | Last Batch Acc: {accuracy*100:.2f}%")
 
-    Adam.step([layer_1, layer_2, layer_3])
+print(f"Suma outputu: {np.sum(output[0])}")
 
-    if epoch %25 == 0:
-        print(f"Epoch {epoch}, Loss: {loss:.4f}")
-print("Final weights of third layer: ", layer_3.weight)
-
-
+# Wykres straty od epoki
 plt.figure(figsize=(10, 6))
 plt.plot(loss_arr, label='Training Loss')
 
